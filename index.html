@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>言って。 · 节奏 FPS</title>
+<style>
+  html,body{margin:0;height:100%;background:#05070f;overflow:hidden;
+    font-family:"Segoe UI","Microsoft YaHei",system-ui,sans-serif;color:#dbe7ff;user-select:none}
+  #c{display:block;width:100vw;height:100vh;cursor:none}
+  .overlay{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;
+    background:rgba(4,7,16,.82);backdrop-filter:blur(3px);z-index:10;text-align:center;gap:14px}
+  .overlay h1{font-size:44px;margin:0;letter-spacing:.04em;font-weight:600}
+  .overlay h1 span{color:#7fb6ff}
+  .overlay p{margin:0;color:#9fb2d8;line-height:1.8;font-size:15px}
+  .btn{margin-top:10px;padding:12px 34px;border-radius:999px;border:1px solid #4f7dd0;
+    background:linear-gradient(180deg,#1b2f5c,#101c38);color:#cfe0ff;font-size:17px;cursor:pointer}
+  .btn:hover{background:linear-gradient(180deg,#234080,#152547)}
+  kbd{background:#1b2743;border-radius:4px;padding:1px 6px;font-size:13px;border:1px solid #2c4068}
+  #hud{position:fixed;inset:0;pointer-events:none;z-index:5}
+  .big{position:absolute;font-variant-numeric:tabular-nums}
+  #score{left:28px;top:22px;font-size:34px;font-weight:700;color:#eaf2ff;text-shadow:0 0 18px rgba(120,170,255,.45)}
+  #sub{left:30px;top:64px;font-size:14px;color:#8ea6cf}
+  #combo{right:30px;top:24px;font-size:15px;color:#9fe0ff}
+  #time{left:50%;top:20px;transform:translateX(-50%);font-size:13px;color:#6d82a8}
+  #acc{right:30px;top:48px;font-size:13px;color:#7f94bb}
+  #msg{position:absolute;left:50%;bottom:13%;transform:translateX(-50%);font-size:19px;color:#ffe6a6;
+    text-shadow:0 0 16px rgba(255,190,90,.5);opacity:0;transition:opacity .18s}
+  #end{display:none}
+  #end .line{color:#cfe0ff;font-size:16px;margin:2px}
+</style>
+<link rel="stylesheet" href="ui.css">
+</head>
+<body>
+<canvas id="c"></canvas>
+
+<main id="menu" aria-label="选曲">
+  <div class="brand"><span class="brand-mark">◈</span> 节奏射击 <span class="brand-en">RHYTHM / AIM</span></div>
+  <section class="song-panel">
+    <div class="eyebrow"><span class="live-dot"></span> SELECT A TRACK <span id="track-count"></span></div>
+    <h1 id="song-title">言って。</h1>
+    <p id="song-artist">ヨルシカ</p>
+    <div class="song-meta"><span id="song-bpm"></span><i></i><span id="song-duration"></span><i></i><span id="song-targets"></span></div>
+    <div class="track-picker"><button id="song-prev" aria-label="上一首">←</button><span>切换曲目 <small>← / →</small></span><button id="song-next" aria-label="下一首">→</button></div>
+    <div class="difficulty-heading"><span>演奏难度</span><span id="difficulty-note"></span></div>
+    <div class="difficulty" role="group" aria-label="难度"><button data-diff="0">简单 <small>01</small></button><button data-diff="1">普通 <small>02</small></button><button data-diff="2">困难 <small>03</small></button></div>
+    <button id="play" class="primary">开始演奏 <span>ENTER ↗</span></button>
+    <div class="menu-tools"><button id="open-settings">灵敏度设置 <small>S</small></button><button id="screen-mode">后屏 · 靶区</button></div>
+  </section>
+  <div class="menu-footer"><span>跟着音乐，把每一次瞄准落在节拍上。</span><span>鼠标瞄准 <b>·</b> 左键射击 <b>·</b> 金环按住跟枪</span></div>
+</main>
+<div id="hud" aria-label="游戏状态">
+  <div class="hud-score"><div class="hud-label">SCORE / 得分</div><div id="score">0</div><div id="sub">命中 0　漏 0</div></div>
+  <div class="hud-track"><div id="playing-title"></div><div class="track-timing"><span id="elapsed">0:00</span><div class="song-progress"><div id="song-progress-fill"></div></div><span id="time"></span></div><div id="beat-dots" aria-hidden="true"><i></i><i></i><i></i><i></i></div></div>
+  <div class="hud-performance"><div class="hud-label">COMBO / 连击</div><div id="streak">0 <small>×</small></div><div id="acc"></div></div>
+  <div id="combo"></div><div id="msg"></div>
+  <div class="hud-bottom"><span><i class="legend tap"></i>点射 <i class="legend hold"></i>按住跟枪</span><span id="hint">M 后屏切换　·　Esc 暂停</span></div>
+</div>
+<div class="overlay" id="settings" style="display:none">
+  <h1 style="font-size:30px">灵敏度</h1>
+  <p style="max-width:460px">按你在《无畏契约》里的设置填，换算后手感一致——<br>同样的手腕移动距离，转同样大的角度。</p>
+  <div style="display:flex;gap:26px;margin:10px 0 4px">
+    <label style="color:#9fb2d8;font-size:15px">灵敏度<br>
+      <input id="in-sens" type="number" step="0.001" value="0.4"
+             style="width:150px;margin-top:8px;padding:10px 12px;border-radius:10px;border:1px solid #2c4068;background:#0d1526;color:#eaf2ff;font-size:19px;text-align:center">
+    </label>
+    <label style="color:#9fb2d8;font-size:15px">鼠标 DPI<br>
+      <input id="in-dpi" type="number" step="50" value="800"
+             style="width:150px;margin-top:8px;padding:10px 12px;border-radius:10px;border:1px solid #2c4068;background:#0d1526;color:#eaf2ff;font-size:19px;text-align:center">
+    </label>
+  </div>
+  <p id="calc" style="color:#cfe0ff;font-size:16px;margin:14px 0"></p>
+  <div class="dialog-actions"><button class="btn" id="apply-sens">应用设置</button><button class="btn secondary" id="close-settings">取消</button></div>
+</div><div class="overlay" id="pause" style="display:none">
+  <h1 style="font-size:30px">暂停</h1>
+  <div style="display:flex;flex-direction:column;gap:12px;margin-top:6px">
+    <button class="btn" id="resume" style="min-width:230px">继续</button>
+    <button class="btn" id="restart" style="min-width:230px">重新开始</button>
+    <button class="btn" id="open-sens" style="min-width:230px">灵敏度</button>
+    <button class="btn" id="to-menu" style="min-width:230px">回到主菜单</button>
+    <button class="btn" id="quit" style="min-width:230px">退出游戏</button>
+  </div>
+  <p style="color:#5f7496;font-size:13px;margin-top:10px">Esc 也可以继续</p>
+</div>
+
+<div class="overlay" id="end">
+  <h1 style="font-size:34px">おしまい</h1>
+  <div class="line" id="endScore"></div>
+  <div class="line" id="endAcc"></div>
+  <div class="line" id="endHer"></div>
+  <div class="dialog-actions"><button class="btn" id="again">再来一遍</button><button class="btn secondary" id="end-menu">返回选曲</button></div>
+</div>
+
+
+<div class="overlay" id="mobile-tip" style="display:none">
+  <h1 style="font-size:30px">请用电脑打开</h1>
+  <p style="max-width:420px">这个游戏要用鼠标瞄准和锁定指针，<br>手机/平板上玩不了。<br>把链接发到电脑上，用 Chrome 或 Edge 打开就能玩。</p>
+</div>
+<script>
+(function () {
+  var coarse = window.matchMedia && matchMedia('(pointer: coarse)').matches;
+  var fine = window.matchMedia && matchMedia('(pointer: fine)').matches;
+  if (coarse && !fine) {
+    document.getElementById('mobile-tip').style.display = 'flex';
+    var m = document.getElementById('menu'); if (m) m.style.display = 'none';
+  }
+})();
+</script>
+<script src="songs.js"></script>
+<script src="songs/itte/chart.js"></script>
+<script src="songs/haru/chart.js"></script>
+<script src="songs/luna/chart.js"></script>
+<script src="game.js"></script>
+<script src="ui.js"></script>
+</body>
+</html>

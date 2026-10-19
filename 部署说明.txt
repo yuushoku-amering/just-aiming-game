@@ -1,0 +1,41 @@
+节奏 FPS · 网页部署说明（EdgeOne）
+=====================================
+
+这个文件夹就是完整的静态站点，根目录必须有 index.html。
+不需要后端、构建步骤或环境变量。
+
+【EdgeOne Pages 有「单文件 25MB」限制 —— 本包已按此处理】
+  最大的单个文件是 songs/haru/mv.mp4 = 13.8MB，其余都更小（音频 6.5–9.3MB、立绘 ≤2.6MB）。
+  三个 MV 都是 360p（墙上那块屏本身只显示约 350px 宽，看不出差别）。
+  以后若要换更高清的 MV，单个文件别超过 25MB，否则上传会失败。
+
+【方式一 · EdgeOne Pages（推荐，最快）】
+  1. 控制台 → Pages → 新建项目 → 选「直接上传」
+  2. 把本文件夹**整个**拖进去（根目录必须是 index.html，别多套一层）
+  3. 框架选「无 / 静态」，构建命令留空，输出目录填 `/`
+  4. 部署 → 拿到域名，就能发了
+
+【方式二 · 轻量应用服务器 + Nginx】
+  1. 文件夹传到 /www/wwwroot/rhythmfps
+  2. Nginx：
+       root /www/wwwroot/rhythmfps;
+       index index.html;
+       location / { try_files $uri $uri/ /index.html; }
+  3. 确认视频支持 Range（MV 依赖分段请求，不支持会卡在第一帧）；
+     宝塔面板记得关掉「防跨站攻击」对 mp4 的拦截
+  4. 全站用 HTTPS，否则浏览器会限制指针锁定
+
+【访问提示】
+  · 必须电脑 + Chrome/Edge（要锁定鼠标），手机打开只会看到「请用电脑打开」
+  · 首屏约 20MB（程序+音频+立绘）；MV 只有按 M 切到 MV 模式才下载
+
+【文件】
+  index.html game.js ui.js ui.css songs.js favicon.ico
+  *.png                 角色立绘
+  songs/<id>/audio.mp3  歌曲
+  songs/<id>/chart.js   谱面
+  songs/<id>/cover.jpg  封面
+  songs/<id>/mv.mp4     MV（360p，按需加载）
+
+【注意】
+  三首曲子有版权，这个站点只适合私人小圈子分享，不要公开传播或商用。
